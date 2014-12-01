@@ -10,7 +10,7 @@ def extractMaze(img):
   WIDTH = 640
   HEIGHT = 480
   THRESHOLD = 0.9
-  CTHRESH = 50
+  CTHRESH = 30
 
   # resize provided image to something sane to make results more uniform
   img = util.areaResize(img, WIDTH, HEIGHT)
@@ -47,13 +47,16 @@ def extractMaze(img):
     cv2.line(seg, (x1, y1), (x2, y2), (255, 255, 255))
 
   # compute the average color of populated pixels
+  # also populate a list of all "on" pixels
   accum = (0, 0, 0)
   accumCount = 0.01
+  frontier = []
   for rIdx, cIdx in imgRange:
     if seg[rIdx][cIdx] > THRESHOLD:
       accumCount += 1
       b, g, r = img[rIdx][cIdx]
       accum = (accum[0] + b, accum[1] + g, accum[2] + r)
+      frontier.append((cIdx, rIdx))
   averageColor = (accum[0] / accumCount, accum[1] / accumCount, accum[2] / accumCount)
 
   # run a loop that segments the image until few changes are made in one iteration
@@ -61,26 +64,35 @@ def extractMaze(img):
   # and uses the x, y coords to a) find # of "on" neighbors and b) compute the
   # color distance between the pixel and each known good pixel, as well as comparison
   # to the average color from the initial hough transform
-  newSeeds = None
-  minSeeds = 20
-  iterNum = 0
 
-  # TODO: Iterate from top left, top right, bottom left, bottom right in that order
+  # TODO: BFS instead of whatever the hell I made here
   # instead of looping until minimal changes
-  while newSeeds == None or newSeeds > minSeeds:
-    iterNum += 1
-    print 'ITERATION:', iterNum, '- CHANGED:', newSeeds
-    newSeeds = 0
-    newSeg = seg.copy()
-    for rIdx, cIdx in imgRange:
-      if seg[rIdx][cIdx] > THRESHOLD:
-        continue
-      for i, j in gridNeighbors((cIdx, rIdx), w, h, 2):
-        if seg[rIdx + j][cIdx + i] > THRESHOLD and compareColors(img[rIdx][cIdx], averageColor, CTHRESH):
-          newSeg[rIdx][cIdx] = 1.0
-          newSeeds += 1
-          break
-    seg = newSeg
+
+  cv2.namedWindow('SEG')
+  cv2.imshow('SEG', seg)
+
+  count = 0
+  visited = []
+  while len(frontier) > 0:
+    cIdx, rIdx = frontier.pop(0)
+    if (cIdx, rIdx) in visited:
+      continue
+    visited.append((cIdx, rIdx))
+    #print count, '-', len(frontier)
+    if count % 1000 == 0:
+      cv2.waitKey(10)
+      cv2.imshow('SEG', seg)
+    count += 1
+    neighbors = [(cIdx + i, rIdx + j) for i, j in gridNeighbors((cIdx, rIdx), w, h, 2)]
+    for i, j in neighbors:
+      if seg[j][i] > THRESHOLD and compareColors(img[rIdx][cIdx], img[j][i], CTHRESH):
+        seg[rIdx][cIdx] = 1.0
+        neighbors.extend(frontier); frontier = neighbors
+        break
+      else:
+        seg[rIdx][cIdx] = 0.3
+
+  cv2.destroyWindow('SEG')
 
 
   # once the edges of the maze have been determined, run the maze through a feature
