@@ -16,3 +16,6 @@ def areaResize(img, x, y):
 
   newImg = cv2.resize(img, (newWidth, newHeight))
   return newImg
+
+def transitions(points):
+  return zip(points[:-1], points[1:])

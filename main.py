@@ -27,7 +27,15 @@ image = maze.makeSkeleton(image)
 paths = maze.makePaths(image)
 
 graph = graphs.Graph(paths, binSize = 4)
-print graph.getClosestNode((300, 200))
+#print graph.getClosestNode((300, 200))
+
+start = (190, 220)
+finish = (635, 380)
+path = graph.findPath(start, finish)
+
+for p1, p2 in util.transitions(path):
+  cv2.line(backup, p1, p2, (255, 0, 0), thickness = 2)
+
 
 '''
 image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
@@ -36,5 +44,5 @@ image = cv2.subtract(backup, image)
 
 # show the image
 cv2.namedWindow('A')
-cv2.imshow('A', image)
+cv2.imshow('A', backup)
 cv2.waitKey(0)
